@@ -9,6 +9,8 @@ TestResults/
 coverage/
 dist/
 artifacts/cache/
+artifacts/release/
+artifacts/staging/
 artifacts/installer/
 artifacts/payload/
 artifacts/publish/
