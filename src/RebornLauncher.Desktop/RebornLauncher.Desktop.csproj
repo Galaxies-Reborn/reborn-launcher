@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AssemblyName>RebornLauncher</AssemblyName>
+    <RootNamespace>RebornLauncher.Desktop</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Product>Galaxies Reborn Launcher</Product>
+    <Description>Guided Galaxies Reborn client and server installer</Description>
+    <Version>0.1.0</Version>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <!-- No RuntimeIdentifier is set here: this project targets Windows, Linux, and macOS, so the RID
+       is chosen at publish time (dotnet publish -r win-x64 | linux-x64 | osx-arm64). These options
+       only apply once one is chosen; setting SelfContained without a RID makes the build produce
+       no output while still reporting success. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Client torrent metadata still ships with the launcher. The release catalog does not: it is
+         read from the umbrella at run time. -->
+    <EmbeddedResource Include="..\..\artifacts\torrents\*.torrent" Condition="Exists('..\..\artifacts\torrents')">
+      <LogicalName>RebornLauncher.Torrents.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.2.3" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RebornLauncher.Core\RebornLauncher.Core.csproj" />
+  </ItemGroup>
+
+</Project>

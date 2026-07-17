@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>reborn</AssemblyName>
+    <RootNamespace>RebornLauncher.Cli</RootNamespace>
+    <Product>Galaxies Reborn Launcher CLI</Product>
+    <Description>Headless Galaxies Reborn server installer for VPS hosts</Description>
+    <Version>0.1.0</Version>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- As with the desktop app, SelfContained without a RuntimeIdentifier produces no output while
+       still reporting success, so these apply only once a RID is chosen at publish time. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RebornLauncher.Core\RebornLauncher.Core.csproj" />
+  </ItemGroup>
+
+</Project>

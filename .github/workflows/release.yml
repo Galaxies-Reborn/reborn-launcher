@@ -1,0 +1,79 @@
+name: Release
+
+# Publishes the binaries the VPS guide and the download page point at. Without this, those links
+# have nothing to resolve to.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: win-x64
+            os: windows-latest
+          - rid: osx-arm64
+            os: macos-latest
+          - rid: osx-x64
+            os: macos-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Test
+        run: dotnet test RebornLauncher.sln --configuration Release
+
+      - name: Publish CLI
+        run: dotnet publish src/RebornLauncher.Cli -c Release -r ${{ matrix.rid }} -o out/cli
+
+      - name: Publish desktop
+        run: dotnet publish src/RebornLauncher.Desktop -c Release -r ${{ matrix.rid }} -o out/desktop
+
+      # The VPS guide fetches reborn-linux-x64 by exactly this name.
+      - name: Name the artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [ "${{ matrix.rid }}" = "win-x64" ]; then
+            cp out/cli/reborn.exe "dist/reborn-${{ matrix.rid }}.exe"
+            cp out/desktop/RebornLauncher.exe "dist/RebornLauncher-${{ matrix.rid }}.exe"
+          else
+            cp out/cli/reborn "dist/reborn-${{ matrix.rid }}"
+            cp out/desktop/RebornLauncher "dist/RebornLauncher-${{ matrix.rid }}"
+            chmod +x dist/*
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

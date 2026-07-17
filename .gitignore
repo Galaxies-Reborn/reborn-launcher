@@ -1,0 +1,16 @@
+.vs/
+.idea/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.nupkg
+TestResults/
+coverage/
+dist/
+artifacts/installer/
+artifacts/payload/
+artifacts/publish/
+artifacts/staging/
+*.partial
+*.tmp

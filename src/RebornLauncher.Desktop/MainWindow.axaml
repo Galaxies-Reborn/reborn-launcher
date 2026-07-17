@@ -1,0 +1,236 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RebornLauncher.Desktop.MainWindow"
+        Title="Galaxies Reborn Launcher"
+        Width="1040" Height="740"
+        MinWidth="880" MinHeight="620"
+        Background="#12151C">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+
+    <!-- Header -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+      <StackPanel>
+        <TextBlock Text="Galaxies Reborn Launcher" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock x:Name="HeaderSubtitleTextBlock" Text="Instance setup" Classes="Muted" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="#C8A24B" />
+        <TextBlock x:Name="StatusTextBlock" Text="Setup required" VerticalAlignment="Center" />
+        <TextBlock x:Name="VersionTextBlock" Classes="Muted" VerticalAlignment="Center" Margin="12,0,0,0" />
+      </StackPanel>
+    </Grid>
+
+    <TabControl x:Name="MainTabControl" Grid.Row="1" SelectionChanged="MainTabControl_SelectionChanged">
+
+      <!-- Setup -->
+      <TabItem Header="Setup">
+        <ScrollViewer>
+          <StackPanel Margin="0,12,0,0">
+
+            <Border Classes="Card">
+              <StackPanel>
+                <TextBlock Text="Release" Classes="SectionTitle" />
+
+                <TextBlock Text="Project" Classes="FieldLabel" />
+                <ComboBox x:Name="ProjectComboBox" HorizontalAlignment="Stretch"
+                          SelectionChanged="ProjectComboBox_SelectionChanged" />
+
+                <StackPanel x:Name="FlavorPanel" IsVisible="False">
+                  <TextBlock Text="Era" Classes="FieldLabel" />
+                  <ComboBox x:Name="FlavorComboBox" HorizontalAlignment="Stretch"
+                            SelectionChanged="FlavorComboBox_SelectionChanged" />
+                </StackPanel>
+
+                <StackPanel x:Name="RendererPanel" IsVisible="False">
+                  <TextBlock Text="Renderer" Classes="FieldLabel" />
+                  <ComboBox x:Name="RendererComboBox" HorizontalAlignment="Stretch"
+                            SelectionChanged="RendererComboBox_SelectionChanged" />
+                </StackPanel>
+
+                <TextBlock Text="Variant" Classes="FieldLabel" />
+                <ComboBox x:Name="VariantComboBox" HorizontalAlignment="Stretch"
+                          SelectionChanged="VariantComboBox_SelectionChanged" />
+
+                <TextBlock x:Name="ChannelDescriptionTextBlock" Classes="Muted" Margin="0,8,0,0" />
+                <TextBlock x:Name="DownloadSizeTextBlock" Classes="Muted" Margin="0,6,0,0" />
+              </StackPanel>
+            </Border>
+
+            <Border Classes="Card">
+              <StackPanel>
+                <TextBlock Text="Instance" Classes="SectionTitle" />
+
+                <TextBlock Text="Install folder" Classes="FieldLabel" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBox x:Name="InstallRootTextBox" />
+                  <Button Grid.Column="1" Content="Browse" Margin="8,0,0,0" Click="BrowseInstallRoot_Click" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,12,*">
+                  <StackPanel>
+                    <TextBlock Text="Instance name" Classes="FieldLabel" />
+                    <TextBox x:Name="InstanceNameTextBox" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Text="Cluster name" Classes="FieldLabel" />
+                    <TextBox x:Name="ClusterNameTextBox" />
+                  </StackPanel>
+                </Grid>
+
+                <Grid ColumnDefinitions="*,12,*">
+                  <StackPanel>
+                    <TextBlock Text="Public address" Classes="FieldLabel" />
+                    <TextBox x:Name="PublicAddressTextBox" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Text="Login port" Classes="FieldLabel" />
+                    <TextBox x:Name="LoginPortTextBox" />
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <Border Classes="Card">
+              <StackPanel>
+                <TextBlock Text="Container runtime" Classes="SectionTitle" />
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                  <ComboBox x:Name="BackendComboBox" HorizontalAlignment="Stretch" />
+                  <Button Grid.Column="1" Content="Check" Margin="8,0,0,0" Click="DetectBackend_Click" />
+                  <Button Grid.Column="2" Content="Get it" Margin="8,0,0,0" Click="OpenBackendDownload_Click" />
+                </Grid>
+                <TextBlock x:Name="BackendStatusTextBlock" Classes="Muted" Margin="0,8,0,0" />
+              </StackPanel>
+            </Border>
+
+            <Border Classes="Card">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="Components" Classes="SectionTitle" />
+                  <CheckBox x:Name="ClientToolsCheckBox" Content="Client build tools (optional, large)" />
+                  <CheckBox x:Name="InitializeServerCheckBox" Content="Build, initialize, and start server" IsChecked="True" />
+
+                  <StackPanel x:Name="RetailClientPanel" IsVisible="False" Margin="0,10,0,0">
+                    <TextBlock Text="Retail client folder (.tre files)" Classes="FieldLabel" />
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBox x:Name="RetailClientTextBox" />
+                      <Button Grid.Column="1" Content="Browse" Margin="8,0,0,0" Click="BrowseRetailClient_Click" />
+                    </Grid>
+                    <TextBlock x:Name="RetailClientStatusTextBlock" Classes="Muted" Margin="0,6,0,0" />
+                  </StackPanel>
+                </StackPanel>
+                <Button x:Name="PrepareButton" Grid.Column="1" Content="Prepare instance"
+                        Width="176" Height="40" VerticalAlignment="Bottom" Click="PrepareButton_Click" />
+              </Grid>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- Server -->
+      <TabItem Header="Server">
+        <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
+          <Border Classes="Card">
+            <StackPanel>
+              <TextBlock Text="Server control" Classes="SectionTitle" />
+              <TextBlock x:Name="ServerSummaryTextBlock" Classes="Muted" />
+              <TextBlock x:Name="ServerAddressTextBlock" Classes="Muted" Margin="0,4,0,0" />
+              <TextBlock x:Name="ServerBackendTextBlock" Classes="Muted" Margin="0,4,0,8" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Start" Click="StartServer_Click" />
+                <Button Content="Stop" Click="StopServer_Click" />
+                <Button Content="Refresh status" Click="RefreshServer_Click" />
+                <Button Content="Load logs" Click="LoadLogs_Click" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Grid.Row="1" Classes="Card">
+            <StackPanel>
+              <TextBlock Text="Want To Host Online?" Classes="SectionTitle" />
+              <TextBlock Classes="Muted"
+                         Text="A server on your own machine is only reachable from your network unless you forward ports and keep the machine running. A VPS keeps your galaxy online around the clock." />
+              <TextBlock Classes="Muted" Margin="0,8,0,0"
+                         Text="We suggest ZAP-Hosting. Our link gives you 20% off for life." />
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                <Button Content="Get 20% off for life at ZAP-Hosting" Click="OpenHostingReferral_Click" />
+                <Button Content="Debian 13 setup guide" Click="OpenVpsGuide_Click" />
+              </StackPanel>
+              <!-- Stated plainly: the link earns the project a commission. -->
+              <TextBlock Classes="Muted" Margin="0,8,0,0" FontSize="11"
+                         Text="This is a referral link. Using it supports Galaxies Reborn at no extra cost to you. The 20% discount is ZAP-Hosting's offer, not ours, and their terms apply." />
+            </StackPanel>
+          </Border>
+
+          <TextBox x:Name="ServerOutputTextBox" Grid.Row="2" IsReadOnly="True"
+                   AcceptsReturn="True" TextWrapping="NoWrap" FontFamily="Cascadia Mono,Menlo,monospace" />
+        </Grid>
+      </TabItem>
+
+      <!-- Clients -->
+      <TabItem Header="Clients">
+        <ScrollViewer>
+          <StackPanel Margin="0,12,0,0">
+            <Border Classes="Card">
+              <StackPanel>
+                <TextBlock Text="Your game client" Classes="SectionTitle" />
+                <TextBlock Classes="Muted"
+                           Text="Galaxies Reborn does not distribute game clients. Point the launcher at a client you already have and it will aim it at your server and start it." />
+                <TextBlock Text="Client folder" Classes="FieldLabel" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBox x:Name="ClientDirectoryTextBox" />
+                  <Button Grid.Column="1" Content="Browse" Margin="8,0,0,0" Click="BrowseClientDirectory_Click" />
+                </Grid>
+                <TextBlock x:Name="RegularClientStatusTextBlock" Classes="Muted" Margin="0,8,0,0" />
+                <TextBlock x:Name="GodClientStatusTextBlock" Classes="Muted" Margin="0,4,0,8" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button x:Name="LaunchRegularButton" Content="Launch regular client" Click="LaunchRegularClient_Click" />
+                  <Button x:Name="LaunchGodButton" Content="Launch God client" Click="LaunchGodClient_Click" />
+                  <Button x:Name="ApplyLoginButton" Content="Apply login address" Click="ConfigureClients_Click" />
+                  <Button x:Name="OpenClientFolderButton" Content="Open folder" Click="OpenClientsFolder_Click" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Shown only where the Windows client executables need a compatibility layer. -->
+            <Border x:Name="CompatibilityPanel" Classes="Card" IsVisible="False">
+              <StackPanel>
+                <TextBlock Text="Windows compatibility" Classes="SectionTitle" />
+                <TextBlock Classes="Muted"
+                           Text="The game clients are Windows executables. On this system they run through Wine or a Proton wrapper, which you install yourself." />
+                <TextBlock Text="Wine binary or Proton wrapper (blank to search PATH)" Classes="FieldLabel" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBox x:Name="CompatibilityToolTextBox" />
+                  <Button Grid.Column="1" Content="Detect" Margin="8,0,0,0" Click="DetectCompatibility_Click" />
+                </Grid>
+                <TextBlock x:Name="CompatibilityStatusTextBlock" Classes="Muted" Margin="0,6,0,0" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- Activity -->
+      <TabItem Header="Activity">
+        <Grid RowDefinitions="*,Auto" Margin="0,12,0,0">
+          <TextBox x:Name="ActivityTextBox" IsReadOnly="True" AcceptsReturn="True"
+                   TextWrapping="NoWrap" FontFamily="Cascadia Mono,Menlo,monospace" />
+          <Button Grid.Row="1" Content="Clear" HorizontalAlignment="Right" Margin="0,8,0,0" Click="ClearActivity_Click" />
+        </Grid>
+      </TabItem>
+    </TabControl>
+
+    <!-- Footer -->
+    <Border Grid.Row="2" Classes="Card" Margin="0,12,0,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock x:Name="OperationTextBlock" Text="Ready" />
+          <ProgressBar x:Name="OperationProgressBar" Height="6" Margin="0,6,0,0" Minimum="0" Maximum="100" />
+          <TextBlock x:Name="TransferTextBlock" Classes="Muted" Margin="0,6,0,0" />
+        </StackPanel>
+        <Button x:Name="CancelButton" Grid.Column="1" Content="Cancel" Margin="12,0,0,0"
+                VerticalAlignment="Center" IsEnabled="False" Click="CancelButton_Click" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
