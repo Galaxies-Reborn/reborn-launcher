@@ -37,6 +37,12 @@ VersionInfoProductName=Galaxies Reborn Launcher
 
 [Files]
 Source: "{#PublishDir}\RebornLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Headless front end, for driving a server without the window.
+Source: "{#PublishDir}\reborn.exe"; DestDir: "{app}"; Flags: ignoreversion
+; MinGit, so a fresh machine needs no Git of its own. The launcher looks for it at
+; tools\MinGit\cmd\git.exe; this layout must match GitBootstrapper.BundledRelativePath.
+Source: "{#PublishDir}\tools\MinGit\*"; DestDir: "{app}\tools\MinGit"; \
+    Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\Galaxies Reborn Launcher"; Filename: "{app}\RebornLauncher.exe"
