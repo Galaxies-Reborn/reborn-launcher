@@ -18,6 +18,8 @@ public partial class MainWindow : Window
     private readonly ContainerService _containerService;
     private readonly Core3PipelineService _core3Pipeline;
     private readonly ClientLaunchService _clientLaunch;
+    private readonly PrerequisiteService _prerequisiteService;
+    private readonly PrerequisiteInstaller _prerequisiteInstaller;
 
     private UmbrellaService? _umbrella;
     private UmbrellaCatalog? _catalog;
@@ -33,6 +35,8 @@ public partial class MainWindow : Window
         _containerService = new ContainerService(_processRunner);
         _core3Pipeline = new Core3PipelineService(_containerService, _processRunner);
         _clientLaunch = new ClientLaunchService(_processRunner);
+        _prerequisiteService = new PrerequisiteService(_processRunner, _containerService);
+        _prerequisiteInstaller = new PrerequisiteInstaller(_processRunner);
 
         // Loaded, not Opened: Opened fires before the selected tab's content is realized, so the
         // controls inside it do not exist yet.
@@ -75,6 +79,7 @@ public partial class MainWindow : Window
             UpdatePreparedUi();
             AppendActivity($"Launcher ready on {DescribeHost()}.");
             await DetectBackendAsync(showDialog: false);
+            await RefreshPrerequisitesAsync();
             if (ClientLaunchService.RequiresCompatibilityLayer)
             {
                 await DetectCompatibilityAsync(showDialog: false);
@@ -427,15 +432,83 @@ public partial class MainWindow : Window
     private void OpenVpsGuide_Click(object? sender, RoutedEventArgs e) =>
         _processRunner.Start(VpsGuideUri, [], Environment.CurrentDirectory);
 
-    private void OpenBackendDownload_Click(object? sender, RoutedEventArgs e)
+    private IReadOnlyList<Prerequisite> _prerequisites = [];
+
+    private async void RefreshPrerequisites_Click(object? sender, RoutedEventArgs e) =>
+        await RefreshPrerequisitesAsync();
+
+    private async Task RefreshPrerequisitesAsync()
     {
-        var backend = BackendComboBox.SelectedItem as ContainerBackendDefinition;
-        if (backend is null || string.IsNullOrWhiteSpace(backend.InstallUri))
+        if (PrerequisiteList is null)
         {
-            backend = ContainerService.Backends.First(item => item.Kind == ContainerBackendKind.DockerDesktop);
+            return;
         }
 
-        _processRunner.Start(backend.InstallUri, [], Environment.CurrentDirectory);
+        try
+        {
+            _prerequisites = await _prerequisiteService.InspectAsync(
+                _settings,
+                IncludeClientBuildCheckBox?.IsChecked == true);
+
+            PrerequisiteList.ItemsSource = _prerequisites.Select(prerequisite => new PrerequisiteRow(
+                prerequisite.Id,
+                prerequisite.DisplayName + (prerequisite.Required ? string.Empty : " (optional)"),
+                prerequisite.Purpose,
+                prerequisite.Detail,
+                prerequisite.State switch
+                {
+                    PrerequisiteState.Ready => "✓",
+                    PrerequisiteState.NotReady => "!",
+                    _ => "✕",
+                },
+                // Linux installs Docker through its package manager, so there is nothing to fetch.
+                prerequisite.InstallerUri?.EndsWith("/", StringComparison.Ordinal) == true ||
+                prerequisite.InstallerUri?.Contains("/docs.", StringComparison.Ordinal) == true
+                    ? "How to install"
+                    : "Download and install",
+                prerequisite.CanInstall)).ToList();
+        }
+        catch (Exception exception)
+        {
+            AppendActivity($"Prerequisite check failed: {exception.Message}");
+        }
+    }
+
+    private async void InstallPrerequisite_Click(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Button)?.Tag is not string id ||
+            _prerequisites.FirstOrDefault(prerequisite => prerequisite.Id == id) is not { } prerequisite)
+        {
+            return;
+        }
+
+        // Linux has no installer to fetch; the distribution's package manager owns this.
+        if (prerequisite.InstallerUri?.Contains("/docs.", StringComparison.Ordinal) == true)
+        {
+            _prerequisiteInstaller.OpenDocumentation(prerequisite);
+            return;
+        }
+
+        await RunOperationAsync($"Downloading {prerequisite.DisplayName}", async cancellationToken =>
+        {
+            var installer = await _prerequisiteInstaller.DownloadAsync(
+                prerequisite,
+                Path.Combine(LauncherDataRoot, "downloads"),
+                new Progress<TransferProgress>(UpdateTransferProgress),
+                cancellationToken);
+
+            AppendActivity($"Downloaded {Path.GetFileName(installer)}. Starting it now.");
+
+            // Handed over rather than run silently: installing this changes the machine, and that
+            // approval belongs to the person at the keyboard.
+            _prerequisiteInstaller.Launch(installer);
+            await MessageDialog.ShowAsync(
+                this,
+                prerequisite.DisplayName,
+                $"{prerequisite.DisplayName} is installing. Finish its installer, then choose Re-check.");
+        });
+
+        await RefreshPrerequisitesAsync();
     }
 
     private async void BrowseInstallRoot_Click(object? sender, RoutedEventArgs e)
@@ -531,6 +604,78 @@ public partial class MainWindow : Window
             EnsureCommandSucceeded(result, "stop the server");
             SetText(ServerOutputTextBox, result.CombinedOutput);
             UpdateStatusBadge("Server stopped", ready: false);
+        });
+    }
+
+    private UpdateStatus? _updateStatus;
+
+    private async void CheckUpdate_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!await TryReadPreparedSettingsAsync())
+        {
+            return;
+        }
+
+        var settings = _settings;
+        var channel = SelectedChannel;
+        await RunOperationAsync("Checking for updates", async cancellationToken =>
+        {
+            var umbrella = _umbrella ?? throw new InvalidOperationException("The release catalog is not loaded.");
+            var paths = new LauncherPaths(settings, channel);
+
+            // Metadata only: asking costs nothing and fetches no source.
+            _updateStatus = await umbrella.CheckForUpdateAsync(paths.UmbrellaRoot, channel, cancellationToken);
+            SetText(UpdateStatusTextBlock, _updateStatus.Describe());
+            SetEnabled(UpdateRebuildButton, _updateStatus.UpdateAvailable);
+            AppendActivity(_updateStatus.Describe());
+        });
+    }
+
+    private async void UpdateAndRebuild_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!await TryReadPreparedSettingsAsync())
+        {
+            return;
+        }
+
+        var settings = _settings;
+        var channel = SelectedChannel;
+        var retailClient = RetailClientTextBox?.Text?.Trim() ?? string.Empty;
+
+        await RunOperationAsync("Updating server", async cancellationToken =>
+        {
+            var umbrella = _umbrella ?? throw new InvalidOperationException("The release catalog is not loaded.");
+            var paths = new LauncherPaths(settings, channel);
+            var progress = new Progress<TransferProgress>(UpdateTransferProgress);
+
+            AppendActivity("Stopping the server before replacing its sources.");
+            if (channel.Pipeline == PipelineKind.Core3)
+            {
+                await _core3Pipeline.StopAsync(settings, paths, AppendActivity, cancellationToken);
+            }
+            else
+            {
+                await _containerService.StopAsync(settings, channel, AppendActivity, cancellationToken);
+            }
+
+            AppendActivity("Pulling the latest release.");
+            await umbrella.UpdateAsync(paths.UmbrellaRoot, progress, cancellationToken);
+
+            // The umbrella now records newer revisions, so materializing moves the sources onto
+            // them. Submodules already fetched are still initialized, just stale, and are moved.
+            var includeOptional = ClientToolsCheckBox?.IsChecked == true;
+            await umbrella.MaterializeVariantAsync(
+                paths.UmbrellaRoot, channel, includeOptional, progress, cancellationToken);
+
+            AppendActivity("Rebuilding the server. This takes a while.");
+            OperationProgressBar.IsIndeterminate = true;
+            await RunPipelineAsync(settings, channel, paths, retailClient, cancellationToken);
+
+            _updateStatus = await umbrella.CheckForUpdateAsync(paths.UmbrellaRoot, channel, cancellationToken);
+            SetText(UpdateStatusTextBlock, _updateStatus.Describe());
+            SetEnabled(UpdateRebuildButton, _updateStatus.UpdateAvailable);
+            UpdateStatusBadge("Server started", ready: true);
+            AppendActivity("Update complete.");
         });
     }
 

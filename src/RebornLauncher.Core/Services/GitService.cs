@@ -3,6 +3,18 @@ using RebornLauncher.Core.Models;
 
 namespace RebornLauncher.Core.Services;
 
+public enum SubmoduleState
+{
+    /// <summary>Never fetched. For an optional submodule this is a choice, not a problem.</summary>
+    NotFetched,
+
+    /// <summary>Fetched, but sitting at a different revision than the parent records.</summary>
+    Stale,
+
+    /// <summary>At the recorded revision, nested repositories included.</summary>
+    Current,
+}
+
 /// <summary>
 /// Wraps the Git command line. Credential prompting is disabled on every invocation so that a
 /// missing or unauthorized repository fails immediately instead of blocking on a prompt that has
@@ -140,26 +152,52 @@ public sealed partial class GitService(ProcessRunner processRunner, string execu
         return result.StandardOutput.Trim();
     }
 
-    /// <summary>Returns true when the submodule at the given path has been initialized.</summary>
-    public async Task<bool> IsSubmoduleInitializedAsync(
+    /// <summary>
+    /// Condition of a submodule relative to the revision its parent records.
+    ///
+    /// The distinction matters: not fetched and fetched-but-stale look similar but mean opposite
+    /// things. An optional submodule nobody asked for is absent, not out of date, and git creates
+    /// an empty directory for it either way.
+    /// </summary>
+    public async Task<SubmoduleState> GetSubmoduleStateAsync(
         string repositoryRoot,
         string submodulePath,
         CancellationToken cancellationToken = default)
     {
         var result = await RunAsync(
             repositoryRoot,
-            ["submodule", "status", "--", submodulePath],
+            ["submodule", "status", "--recursive", "--", submodulePath],
             null,
             cancellationToken);
 
         if (!result.Succeeded)
         {
-            return false;
+            return SubmoduleState.NotFetched;
         }
 
-        var line = result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-        return line is not null && !IsUninitialized(line);
+        var lines = result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length == 0)
+        {
+            return SubmoduleState.NotFetched;
+        }
+
+        // The first line is the submodule itself; the rest are its nested repositories. If the top
+        // level was never fetched, the nested ones cannot have been either.
+        if (IsUninitialized(lines[0]))
+        {
+            return SubmoduleState.NotFetched;
+        }
+
+        // A stale nested repository is just as wrong as a stale top-level one.
+        return lines.All(IsAtRecordedRevision) ? SubmoduleState.Current : SubmoduleState.Stale;
     }
+
+    /// <summary>True only when the submodule and everything nested under it sit at their pins.</summary>
+    public async Task<bool> IsSubmoduleCurrentAsync(
+        string repositoryRoot,
+        string submodulePath,
+        CancellationToken cancellationToken = default) =>
+        await GetSubmoduleStateAsync(repositoryRoot, submodulePath, cancellationToken) == SubmoduleState.Current;
 
     /// <summary>
     /// Paths of submodules that are still uninitialized beneath the given repository.
@@ -194,8 +232,17 @@ public sealed partial class GitService(ProcessRunner processRunner, string execu
             .ToList();
     }
 
-    // git prefixes uninitialized submodules with '-' and out-of-date ones with '+'.
-    private static bool IsUninitialized(string statusLine) => statusLine.TrimStart('\r').StartsWith('-');
+    // git prefixes uninitialized submodules with '-' and out-of-date ones with '+'. A submodule
+    // sitting at the recorded revision gets no prefix at all.
+    private static bool IsUninitialized(string statusLine) => Prefix(statusLine) == '-';
+
+    private static bool IsAtRecordedRevision(string statusLine) => Prefix(statusLine) == ' ';
+
+    private static char Prefix(string statusLine)
+    {
+        var trimmed = statusLine.TrimStart('\r', '\n');
+        return trimmed.Length > 0 ? trimmed[0] : '-';
+    }
 
     private static string ParseSubmodulePath(string statusLine)
     {

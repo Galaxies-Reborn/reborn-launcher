@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:RebornLauncher.Desktop"
         x:Class="RebornLauncher.Desktop.MainWindow"
         Title="Galaxies Reborn Launcher"
         Width="1040" Height="740"
@@ -94,12 +95,46 @@
             <Border Classes="Card">
               <StackPanel>
                 <TextBlock Text="Container runtime" Classes="SectionTitle" />
-                <Grid ColumnDefinitions="*,Auto,Auto">
+                <Grid ColumnDefinitions="*,Auto">
                   <ComboBox x:Name="BackendComboBox" HorizontalAlignment="Stretch" />
                   <Button Grid.Column="1" Content="Check" Margin="8,0,0,0" Click="DetectBackend_Click" />
-                  <Button Grid.Column="2" Content="Get it" Margin="8,0,0,0" Click="OpenBackendDownload_Click" />
                 </Grid>
                 <TextBlock x:Name="BackendStatusTextBlock" Classes="Muted" Margin="0,8,0,0" />
+              </StackPanel>
+            </Border>
+
+            <Border Classes="Card">
+              <StackPanel>
+                <TextBlock Text="Prerequisites" Classes="SectionTitle" />
+                <TextBlock Classes="Muted"
+                           Text="Everything the server build needs runs inside containers. Only these are needed on this machine." />
+                <ItemsControl x:Name="PrerequisiteList" Margin="0,10,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:PrerequisiteRow">
+                      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+                        <TextBlock Text="{Binding Glyph}" FontSize="15" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <StackPanel Grid.Column="1">
+                          <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Purpose}" Classes="Muted" FontSize="11" />
+                          <TextBlock Text="{Binding Detail}" Classes="Muted" FontSize="11" />
+                        </StackPanel>
+                        <Button Grid.Column="2"
+                                Content="{Binding ActionLabel}"
+                                IsVisible="{Binding CanInstall}"
+                                Tag="{Binding Id}"
+                                Click="InstallPrerequisite_Click"
+                                VerticalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="Re-check" Click="RefreshPrerequisites_Click" />
+                  <CheckBox x:Name="IncludeClientBuildCheckBox"
+                            Content="I want to build the client from source"
+                            VerticalAlignment="Center"
+                            Click="RefreshPrerequisites_Click" />
+                </StackPanel>
               </StackPanel>
             </Border>
 
@@ -141,6 +176,17 @@
                 <Button Content="Stop" Click="StopServer_Click" />
                 <Button Content="Refresh status" Click="RefreshServer_Click" />
                 <Button Content="Load logs" Click="LoadLogs_Click" />
+              </StackPanel>
+
+              <Separator Margin="0,14,0,10" />
+
+              <TextBlock Text="Updates" FontWeight="SemiBold" />
+              <TextBlock x:Name="UpdateStatusTextBlock" Classes="Muted" Margin="0,4,0,8"
+                         Text="Check whether newer sources have been published for this server." />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="CheckUpdateButton" Content="Check for updates" Click="CheckUpdate_Click" />
+                <Button x:Name="UpdateRebuildButton" Content="Update and rebuild"
+                        IsEnabled="False" Click="UpdateAndRebuild_Click" />
               </StackPanel>
             </StackPanel>
           </Border>

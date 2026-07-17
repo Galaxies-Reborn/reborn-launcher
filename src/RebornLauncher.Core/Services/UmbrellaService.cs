@@ -9,6 +9,23 @@ namespace RebornLauncher.Core.Services;
 /// until <see cref="MaterializeVariantAsync"/> is called for a specific variant, so selecting one
 /// flavor never downloads another's content.
 /// </summary>
+/// <summary>
+/// What an instance would gain by updating. <paramref name="StaleSubmodules"/> covers sources left
+/// behind even when the umbrella itself is current.
+/// </summary>
+public sealed record UpdateStatus(string LocalRevision, string RemoteRevision, IReadOnlyList<string> StaleSubmodules)
+{
+    public bool UmbrellaBehind => !string.Equals(LocalRevision, RemoteRevision, StringComparison.Ordinal);
+
+    public bool UpdateAvailable => UmbrellaBehind || StaleSubmodules.Count > 0;
+
+    public string Describe() => !UpdateAvailable
+        ? "The server is up to date."
+        : UmbrellaBehind
+            ? $"A newer release is available ({RemoteRevision[..7]}). The server will be rebuilt."
+            : $"These sources are behind: {string.Join(", ", StaleSubmodules)}. The server will be rebuilt.";
+}
+
 public sealed class UmbrellaService(GitService git)
 {
     public const string DefaultRemote = "https://github.com/Galaxies-Reborn/galaxies-reborn.git";
@@ -49,6 +66,40 @@ public sealed class UmbrellaService(GitService git)
             throw new InvalidOperationException(
                 $"The umbrella could not be fast-forwarded, which usually means it carries local commits: {result.CombinedOutput}");
         }
+    }
+
+    /// <summary>
+    /// Whether an instance's sources are behind what the umbrella publishes. Fetches metadata only,
+    /// so asking is cheap and downloads no source.
+    /// </summary>
+    public async Task<UpdateStatus> CheckForUpdateAsync(
+        string umbrellaRoot,
+        ReleaseChannel channel,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(channel);
+
+        await git.FetchAsync(umbrellaRoot, null, cancellationToken);
+        var local = await git.RevParseAsync(umbrellaRoot, "HEAD", cancellationToken);
+        var remote = await git.RevParseAsync(umbrellaRoot, "FETCH_HEAD", cancellationToken);
+
+        // The umbrella can be current while the instance's submodules are not: a prepare that was
+        // cancelled, or sources moved by hand, leave them behind without the umbrella noticing.
+        //
+        // Only fetched-but-stale counts. A submodule that was never fetched is absent by choice,
+        // such as an optional one nobody asked for, and reporting it would offer an update that
+        // installs something the operator declined.
+        var stale = new List<string>();
+        foreach (var submodule in GetPendingSubmodules(channel, includeOptional: true))
+        {
+            if (await git.GetSubmoduleStateAsync(umbrellaRoot, submodule.Path, cancellationToken)
+                == SubmoduleState.Stale)
+            {
+                stale.Add(submodule.Name);
+            }
+        }
+
+        return new UpdateStatus(local, remote, stale);
     }
 
     public async Task<UmbrellaCatalog> LoadCatalogAsync(
@@ -126,9 +177,11 @@ public sealed class UmbrellaService(GitService git)
             // Guard against a manifest pointing outside the umbrella before handing the path to git.
             SafeCombine(umbrellaRoot, submodule.Path);
 
-            if (await git.IsSubmoduleInitializedAsync(umbrellaRoot, submodule.Path, cancellationToken))
+            // Skipped only when it already sits at the recorded revision. After the umbrella
+            // advances, a submodule is still initialized but stale, and must be moved.
+            if (await git.IsSubmoduleCurrentAsync(umbrellaRoot, submodule.Path, cancellationToken))
             {
-                progress?.Report(new TransferProgress("Fetching sources", $"{submodule.Name} is already present.", 1, 1));
+                progress?.Report(new TransferProgress("Fetching sources", $"{submodule.Name} is up to date.", 1, 1));
                 continue;
             }
 
@@ -152,10 +205,11 @@ public sealed class UmbrellaService(GitService git)
         SubmoduleSpec submodule,
         CancellationToken cancellationToken)
     {
-        if (!await git.IsSubmoduleInitializedAsync(umbrellaRoot, submodule.Path, cancellationToken))
+        if (!await git.IsSubmoduleCurrentAsync(umbrellaRoot, submodule.Path, cancellationToken))
         {
             throw new InvalidOperationException(
-                $"Git reported success but '{submodule.Name}' was not fetched. Check the network connection and rerun.");
+                $"Git reported success but '{submodule.Name}' is not at its pinned revision. " +
+                "Check the network connection and rerun.");
         }
 
         if (!submodule.Recursive)

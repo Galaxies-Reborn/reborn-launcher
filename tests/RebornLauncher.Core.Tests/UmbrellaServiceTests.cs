@@ -166,6 +166,63 @@ public sealed class UmbrellaServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AStaleSubmoduleIsMovedBackToTheRecordedRevision()
+    {
+        using var temp = new TemporaryDirectory();
+        var git = await CreateGitAsync();
+        var remote = await BuildFixtureAsync(git, temp.Path);
+        var umbrella = new UmbrellaService(git);
+        var root = Path.Combine(temp.Path, "instance", "umbrella");
+
+        await umbrella.EnsureClonedAsync(remote, root);
+        var catalog = await umbrella.LoadCatalogAsync(root);
+        var channel = await umbrella.LoadVariantAsync(root, catalog.Projects[0].Flavors[0].Variants[0]);
+        await umbrella.MaterializeVariantAsync(root, channel);
+
+        var submodule = Path.Combine(root, "galaxies-reborn", "nge", "x64-dx9-vanilla", "swg-main");
+        var pinned = (await git.RunAsync(submodule, ["rev-parse", "HEAD"])).StandardOutput.Trim();
+
+        // Stand in for the umbrella advancing: the submodule is still initialized, but sits at the
+        // wrong revision. Git marks this '+', not '-'.
+        await git.RunAsync(submodule, ["checkout", "--detach", "HEAD~1"]);
+        Assert.False(await git.IsSubmoduleCurrentAsync(root, "galaxies-reborn/nge/x64-dx9-vanilla/swg-main"));
+
+        await umbrella.MaterializeVariantAsync(root, channel);
+
+        // Materializing must move it back rather than skip it for being "already present".
+        var actual = (await git.RunAsync(submodule, ["rev-parse", "HEAD"])).StandardOutput.Trim();
+        Assert.Equal(pinned, actual);
+        Assert.True(await git.IsSubmoduleCurrentAsync(root, "galaxies-reborn/nge/x64-dx9-vanilla/swg-main"));
+    }
+
+    [Fact]
+    public async Task CheckForUpdateReportsStaleSourcesEvenWhenTheUmbrellaIsCurrent()
+    {
+        using var temp = new TemporaryDirectory();
+        var git = await CreateGitAsync();
+        var remote = await BuildFixtureAsync(git, temp.Path);
+        var umbrella = new UmbrellaService(git);
+        var root = Path.Combine(temp.Path, "instance", "umbrella");
+
+        await umbrella.EnsureClonedAsync(remote, root);
+        var catalog = await umbrella.LoadCatalogAsync(root);
+        var channel = await umbrella.LoadVariantAsync(root, catalog.Projects[0].Flavors[0].Variants[0]);
+        await umbrella.MaterializeVariantAsync(root, channel);
+
+        Assert.False((await umbrella.CheckForUpdateAsync(root, channel)).UpdateAvailable);
+
+        var submodule = Path.Combine(root, "galaxies-reborn", "nge", "x64-dx9-vanilla", "swg-main");
+        await git.RunAsync(submodule, ["checkout", "--detach", "HEAD~1"]);
+
+        var status = await umbrella.CheckForUpdateAsync(root, channel);
+
+        // The umbrella has not moved, so only the submodule check can catch this.
+        Assert.False(status.UmbrellaBehind);
+        Assert.True(status.UpdateAvailable);
+        Assert.Contains("swg-main", status.StaleSubmodules);
+    }
+
+    [Fact]
     public async Task MaterializingIsIdempotent()
     {
         using var temp = new TemporaryDirectory();
