@@ -88,7 +88,7 @@ public sealed partial class GitService(ProcessRunner processRunner, string execu
         var result = await RunAsync(
             parent,
             ["clone", "--progress", remote, destination],
-            ReportProgress("Cloning umbrella", remote, progress),
+            ReportProgress("Fetching release catalog", "Umbrella catalog", progress),
             cancellationToken);
 
         if (!result.Succeeded)
@@ -291,15 +291,66 @@ public sealed partial class GitService(ProcessRunner processRunner, string execu
         var match = ProgressPattern().Match(line);
         if (!match.Success)
         {
+            var stage = DescribeGitStage(line);
+            if (stage is not null)
+            {
+                progress.Report(new TransferProgress(operation, $"{item} — {stage}", 0, 0));
+            }
+
             return;
         }
 
         var completed = long.Parse(match.Groups["completed"].Value);
         var total = long.Parse(match.Groups["total"].Value);
-        progress.Report(new TransferProgress(operation, $"{item} ({match.Groups["phase"].Value})", completed, total));
+        var phase = match.Groups["phase"].Value;
+
+        // Resolving at 100% is not the end of a submodule update: Git may then spend minutes
+        // populating a large working tree without emitting another percentage. Switch back to an
+        // indeterminate state so the UI never misleadingly sits at a completed bar.
+        if (phase == "Resolving deltas" && completed == total)
+        {
+            progress.Report(new TransferProgress(
+                operation,
+                $"{item} — objects received; checking out tracked files…",
+                0,
+                0));
+            return;
+        }
+
+        var unit = phase is "Checking out files" or "Updating files" or "Filtering content"
+            ? "files"
+            : "objects";
+        progress.Report(new TransferProgress(
+            operation,
+            $"{item} — {phase}",
+            completed,
+            total,
+            Unit: unit));
     };
 
     [GeneratedRegex(
-        @"(?<phase>Counting objects|Compressing objects|Receiving objects|Resolving deltas):\s+\d+%\s+\((?<completed>\d+)/(?<total>\d+)\)")]
+        @"(?<phase>Enumerating objects|Counting objects|Compressing objects|Receiving objects|Resolving deltas|Checking out files|Updating files|Filtering content):\s+\d+%\s+\((?<completed>\d+)/(?<total>\d+)\)")]
     private static partial Regex ProgressPattern();
+
+    private static string? DescribeGitStage(string line)
+    {
+        var value = line.Trim();
+        if (value.StartsWith("Cloning into", StringComparison.OrdinalIgnoreCase))
+        {
+            return "connecting and cloning…";
+        }
+
+        if (value.StartsWith("Submodule path", StringComparison.OrdinalIgnoreCase))
+        {
+            return "checkout complete";
+        }
+
+        var remoteIndex = value.IndexOf("remote:", StringComparison.OrdinalIgnoreCase);
+        if (remoteIndex >= 0)
+        {
+            return value[(remoteIndex + 7)..].Trim();
+        }
+
+        return null;
+    }
 }

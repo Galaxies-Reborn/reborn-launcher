@@ -5,7 +5,8 @@ public sealed record TransferProgress(
     string CurrentItem,
     long BytesCompleted,
     long TotalBytes,
-    double BytesPerSecond = 0)
+    double BytesPerSecond = 0,
+    string Unit = "bytes")
 {
     public double Percentage => TotalBytes <= 0 ? 0 : BytesCompleted * 100d / TotalBytes;
 }

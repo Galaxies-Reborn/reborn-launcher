@@ -183,6 +183,11 @@ public sealed class UmbrellaService(GitService git)
             {
                 // Older Windows launcher releases could check shell scripts out as CRLF. Refresh
                 // even current sources so rerunning Prepare repairs those existing instances.
+                progress?.Report(new TransferProgress(
+                    "Fetching sources",
+                    $"{submodule.Name} is downloaded; refreshing its working tree…",
+                    0,
+                    0));
                 await git.RefreshWorkingTreeAsync(
                     SafeCombine(umbrellaRoot, submodule.Path),
                     cancellationToken);
@@ -190,6 +195,11 @@ public sealed class UmbrellaService(GitService git)
                 continue;
             }
 
+            progress?.Report(new TransferProgress(
+                "Fetching sources",
+                $"{submodule.Name} — starting Git transfer…",
+                0,
+                0));
             await git.UpdateSubmoduleAsync(
                 umbrellaRoot,
                 submodule.Path,
@@ -197,10 +207,26 @@ public sealed class UmbrellaService(GitService git)
                 progress,
                 cancellationToken);
 
+            progress?.Report(new TransferProgress(
+                "Fetching sources",
+                $"{submodule.Name} — verifying downloaded revisions…",
+                0,
+                0));
             await VerifyAsync(umbrellaRoot, submodule, cancellationToken);
+            progress?.Report(new TransferProgress(
+                "Fetching sources",
+                $"{submodule.Name} — writing tracked files…",
+                0,
+                0));
             await git.RefreshWorkingTreeAsync(
                 SafeCombine(umbrellaRoot, submodule.Path),
                 cancellationToken);
+            progress?.Report(new TransferProgress(
+                "Fetching sources",
+                $"{submodule.Name} is ready.",
+                1,
+                1,
+                Unit: "steps"));
         }
     }
 

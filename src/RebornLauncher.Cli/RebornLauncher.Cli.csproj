@@ -9,7 +9,7 @@
     <RootNamespace>RebornLauncher.Cli</RootNamespace>
     <Product>Galaxies Reborn Launcher CLI</Product>
     <Description>Headless Galaxies Reborn server installer for VPS hosts</Description>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 

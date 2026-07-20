@@ -905,10 +905,24 @@ public partial class MainWindow : Window
         }
 
         OperationTextBlock.Text = progress.Operation;
-        var speed = progress.BytesPerSecond > 0 ? $" at {FormatBytes((long)progress.BytesPerSecond)}/s" : string.Empty;
-        TransferTextBlock.Text = progress.TotalBytes > 0
-            ? $"{progress.CurrentItem} — {FormatBytes(progress.BytesCompleted)} of {FormatBytes(progress.TotalBytes)}{speed}"
-            : progress.CurrentItem;
+        if (progress.TotalBytes <= 0)
+        {
+            TransferTextBlock.Text = progress.CurrentItem;
+            return;
+        }
+
+        if (progress.Unit == "bytes")
+        {
+            var speed = progress.BytesPerSecond > 0
+                ? $" at {FormatBytes((long)progress.BytesPerSecond)}/s"
+                : string.Empty;
+            TransferTextBlock.Text =
+                $"{progress.CurrentItem} — {FormatBytes(progress.BytesCompleted)} of {FormatBytes(progress.TotalBytes)}{speed}";
+            return;
+        }
+
+        TransferTextBlock.Text =
+            $"{progress.CurrentItem} — {progress.BytesCompleted:N0} of {progress.TotalBytes:N0} {progress.Unit}";
     }
 
     private async Task<bool> TryReadSettingsAsync()
@@ -1237,7 +1251,7 @@ public partial class MainWindow : Window
         var informational = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion;
-        return string.IsNullOrWhiteSpace(informational) ? "0.4.0" : informational.Split('+')[0];
+        return string.IsNullOrWhiteSpace(informational) ? "0.4.1" : informational.Split('+')[0];
     }
 
     private Task ShowErrorAsync(string title, Exception exception) =>
