@@ -140,7 +140,9 @@ public sealed partial class ContainerService(ProcessRunner processRunner)
         CancellationToken cancellationToken = default)
     {
         var backend = await ResolveAsync(settings.ContainerBackend, cancellationToken);
-        return await RunComposeAsync(backend, settings, channel, ["down"], output, cancellationToken);
+        // Keep the containers, names, images, networks, and volumes intact. A later `up -d`
+        // restarts these same containers instead of removing and recreating them.
+        return await RunComposeAsync(backend, settings, channel, ["stop"], output, cancellationToken);
     }
 
     public async Task<CommandResult> StatusAsync(

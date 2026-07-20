@@ -12,7 +12,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Product>Galaxies Reborn Launcher</Product>
     <Description>Guided Galaxies Reborn client and server installer</Description>
-    <Version>0.1.0</Version>
+    <Version>0.4.0</Version>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 

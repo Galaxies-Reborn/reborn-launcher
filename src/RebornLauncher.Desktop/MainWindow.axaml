@@ -63,9 +63,11 @@
                 <TextBlock Text="Instance" Classes="SectionTitle" />
 
                 <TextBlock Text="Install folder" Classes="FieldLabel" />
-                <Grid ColumnDefinitions="*,Auto">
+                <Grid ColumnDefinitions="*,Auto,Auto">
                   <TextBox x:Name="InstallRootTextBox" />
                   <Button Grid.Column="1" Content="Browse" Margin="8,0,0,0" Click="BrowseInstallRoot_Click" />
+                  <Button Grid.Column="2" Content="Open existing" Margin="8,0,0,0"
+                          Click="OpenExistingInstance_Click" />
                 </Grid>
 
                 <Grid ColumnDefinitions="*,12,*">

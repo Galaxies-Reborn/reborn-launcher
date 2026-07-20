@@ -273,7 +273,8 @@ public sealed class Core3PipelineService(ContainerService containerService, Proc
         CancellationToken cancellationToken = default)
     {
         var backend = await containerService.ResolveAsync(settings.ContainerBackend, cancellationToken);
-        return await ComposeAsync(backend, settings, paths, ["down"], output, cancellationToken);
+        // Preserve the configured containers so Start can reuse their identities.
+        return await ComposeAsync(backend, settings, paths, ["stop"], output, cancellationToken);
     }
 
     public async Task<CommandResult> StatusAsync(

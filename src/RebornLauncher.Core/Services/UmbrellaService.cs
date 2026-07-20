@@ -181,6 +181,11 @@ public sealed class UmbrellaService(GitService git)
             // advances, a submodule is still initialized but stale, and must be moved.
             if (await git.IsSubmoduleCurrentAsync(umbrellaRoot, submodule.Path, cancellationToken))
             {
+                // Older Windows launcher releases could check shell scripts out as CRLF. Refresh
+                // even current sources so rerunning Prepare repairs those existing instances.
+                await git.RefreshWorkingTreeAsync(
+                    SafeCombine(umbrellaRoot, submodule.Path),
+                    cancellationToken);
                 progress?.Report(new TransferProgress("Fetching sources", $"{submodule.Name} is up to date.", 1, 1));
                 continue;
             }
@@ -193,6 +198,9 @@ public sealed class UmbrellaService(GitService git)
                 cancellationToken);
 
             await VerifyAsync(umbrellaRoot, submodule, cancellationToken);
+            await git.RefreshWorkingTreeAsync(
+                SafeCombine(umbrellaRoot, submodule.Path),
+                cancellationToken);
         }
     }
 

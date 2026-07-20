@@ -519,6 +519,31 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OpenExistingInstance_Click(object? sender, RoutedEventArgs e)
+    {
+        if (await PickFolderAsync("Choose a previously prepared instance folder") is not { } folder)
+        {
+            return;
+        }
+
+        var settingsPath = Path.Combine(folder, ".reborn", "instance.json");
+        if (!File.Exists(settingsPath))
+        {
+            await MessageDialog.ShowAsync(
+                this,
+                "Instance configuration not found",
+                $"The selected folder does not contain .reborn{Path.DirectorySeparatorChar}instance.json.");
+            return;
+        }
+
+        if (await TryLoadInstanceAsync(settingsPath))
+        {
+            await SaveLastInstancePointerAsync(settingsPath, CancellationToken.None);
+            AppendActivity($"Opened instance '{_settings.InstanceName}'.");
+            UpdatePreparedUi();
+        }
+    }
+
     private async void BrowseClientDirectory_Click(object? sender, RoutedEventArgs e)
     {
         if (await PickFolderAsync("Choose the folder holding your game client") is { } folder)
@@ -1092,6 +1117,17 @@ public partial class MainWindow : Window
         }
 
         var settingsPath = (await File.ReadAllTextAsync(LastInstancePointerPath)).Trim();
+        if (!await TryLoadInstanceAsync(settingsPath))
+        {
+            return false;
+        }
+
+        AppendActivity($"Restored instance '{_settings.InstanceName}'.");
+        return true;
+    }
+
+    private async Task<bool> TryLoadInstanceAsync(string settingsPath)
+    {
         var restored = await InstanceConfigurationService.LoadAsync(settingsPath);
         if (restored is null ||
             _catalog is null ||
@@ -1103,8 +1139,7 @@ public partial class MainWindow : Window
         _settings = restored;
         ApplySettingsToControls(restored);
         await SelectVariantAsync(restored.ChannelId);
-        AppendActivity($"Restored instance '{restored.InstanceName}'.");
-        return true;
+        return _selectedChannel is not null;
     }
 
     private static async Task SaveLastInstancePointerAsync(string settingsPath, CancellationToken cancellationToken)
@@ -1202,7 +1237,7 @@ public partial class MainWindow : Window
         var informational = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion;
-        return string.IsNullOrWhiteSpace(informational) ? "0.1.0" : informational.Split('+')[0];
+        return string.IsNullOrWhiteSpace(informational) ? "0.4.0" : informational.Split('+')[0];
     }
 
     private Task ShowErrorAsync(string title, Exception exception) =>

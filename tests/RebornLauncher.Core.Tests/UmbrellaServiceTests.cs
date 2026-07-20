@@ -243,6 +243,30 @@ public sealed class UmbrellaServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task MaterializingRepairsTrackedFilesInAnExistingCheckout()
+    {
+        using var temp = new TemporaryDirectory();
+        var git = await CreateGitAsync();
+        var remote = await BuildFixtureAsync(git, temp.Path);
+        var umbrella = new UmbrellaService(git);
+        var root = Path.Combine(temp.Path, "instance", "umbrella");
+
+        await umbrella.EnsureClonedAsync(remote, root);
+        var catalog = await umbrella.LoadCatalogAsync(root);
+        var channel = await umbrella.LoadVariantAsync(root, catalog.Projects[0].Flavors[0].Variants[0]);
+        await umbrella.MaterializeVariantAsync(root, channel);
+
+        var marker = Path.Combine(
+            root, "galaxies-reborn", "nge", "x64-dx9-vanilla", "swg-main", "marker.txt");
+        var repositoryContent = await File.ReadAllBytesAsync(marker);
+        await File.WriteAllTextAsync(marker, "damaged\r\nworking\r\ntree\r\n");
+
+        await umbrella.MaterializeVariantAsync(root, channel);
+
+        Assert.Equal(repositoryContent, await File.ReadAllBytesAsync(marker));
+    }
+
+    [Fact]
     public async Task EnsureClonedRejectsANonEmptyDestination()
     {
         using var temp = new TemporaryDirectory();

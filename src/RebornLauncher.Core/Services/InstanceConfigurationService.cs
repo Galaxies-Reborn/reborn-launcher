@@ -99,12 +99,7 @@ public static partial class InstanceConfigurationService
             return null;
         }
 
-        var environmentPath = Path.Combine(
-            settings.InstallRoot,
-            settings.ChannelId,
-            "server",
-            "swg-main",
-            ".env.reborn");
+        var environmentPath = FindEnvironmentPath(settingsPath, settings);
         if (File.Exists(environmentPath))
         {
             var values = ParseEnvironment(await File.ReadAllLinesAsync(environmentPath, cancellationToken));
@@ -115,6 +110,35 @@ public static partial class InstanceConfigurationService
         }
 
         return settings;
+    }
+
+    private static string FindEnvironmentPath(string settingsPath, InstanceSettings settings)
+    {
+        // Schema-v1 instances used this fixed location. Keep it as the fast path and for backward
+        // compatibility.
+        var legacyPath = Path.Combine(
+            settings.InstallRoot,
+            settings.ChannelId,
+            "server",
+            "swg-main",
+            ".env.reborn");
+        if (File.Exists(legacyPath))
+        {
+            return legacyPath;
+        }
+
+        // Umbrella-backed variants keep swg-main beneath their catalog-defined variant path, which
+        // is intentionally not duplicated in instance.json. Locate the generated environment file
+        // within this instance instead of guessing that evolving path.
+        var stateRoot = Path.GetDirectoryName(Path.GetFullPath(settingsPath));
+        var instanceRoot = stateRoot is null ? null : Path.GetDirectoryName(stateRoot);
+        if (instanceRoot is null || !Directory.Exists(instanceRoot))
+        {
+            return legacyPath;
+        }
+
+        return Directory.EnumerateFiles(instanceRoot, ".env.reborn", SearchOption.AllDirectories)
+            .FirstOrDefault() ?? legacyPath;
     }
 
     public static IReadOnlyDictionary<string, string> BuildProcessEnvironment(InstanceSettings settings) =>

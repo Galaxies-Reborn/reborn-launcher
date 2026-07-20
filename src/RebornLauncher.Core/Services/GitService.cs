@@ -35,7 +35,13 @@ public sealed partial class GitService(ProcessRunner processRunner, string execu
     /// <c>.git/modules/&lt;flavor&gt;/&lt;variant&gt;/swg-main/modules/dsrc/objects/pack/pack-&lt;sha&gt;.keep</c>
     /// exceed the 260-character Windows limit, and without this git fails to clone them.
     /// </summary>
-    private static readonly string[] GlobalConfiguration = ["-c", "core.longpaths=true"];
+    private static readonly string[] GlobalConfiguration =
+    [
+        "-c", "core.longpaths=true",
+        // Container build scripts execute under Linux even when Git checks them out on Windows.
+        // Never let a user's global core.autocrlf setting rewrite their LF line endings.
+        "-c", "core.autocrlf=false",
+    ];
 
     public string Executable { get; } = executable;
 
@@ -135,6 +141,27 @@ public sealed partial class GitService(ProcessRunner processRunner, string execu
         {
             throw new InvalidOperationException(
                 $"Unable to initialize submodule '{submodulePath}': {result.CombinedOutput}");
+        }
+    }
+
+    /// <summary>
+    /// Rewrites tracked files from Git's object store with their repository line endings. This
+    /// repairs instances cloned by older launcher versions under a global core.autocrlf=true
+    /// setting without deleting untracked build output.
+    /// </summary>
+    public async Task RefreshWorkingTreeAsync(
+        string repositoryRoot,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await RunAsync(
+            repositoryRoot,
+            ["checkout-index", "--force", "--all"],
+            null,
+            cancellationToken);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Unable to normalize the source working tree: {result.CombinedOutput}");
         }
     }
 
