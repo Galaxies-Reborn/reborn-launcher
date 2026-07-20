@@ -304,7 +304,7 @@ public partial class MainWindow : Window
 
     private async void PrepareButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (!await TryReadSettingsAsync() is var ok && !ok)
+        if (!await TryReadSettingsAsync())
         {
             return;
         }
