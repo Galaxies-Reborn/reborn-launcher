@@ -18,7 +18,6 @@ downloaded until you choose.
 | --- | --- | --- |
 | Galaxies Reborn | NGE, CU, Pre-CU | The Galaxies Reborn forks. Only NGE `x64-dx9-vanilla` is published so far. |
 | SWGEmu | — | [Core3](https://github.com/swgemu/Core3), an independent Pre-CU emulator with its own container stack. |
-| SWG Source | — | Unmodified upstream [SWGSource](https://github.com/SWG-Source). |
 
 The catalog is read from the umbrella at run time, so published variants appear
 without a launcher update.

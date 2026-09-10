@@ -41,6 +41,15 @@ public sealed partial class GitService(ProcessRunner processRunner, string execu
         // Container build scripts execute under Linux even when Git checks them out on Windows.
         // Never let a user's global core.autocrlf setting rewrite their LF line endings.
         "-c", "core.autocrlf=false",
+        // Prevent retired upstream remotes, including nested submodules in older catalogs,
+        // from contacting the external source organization.
+        "-c", "protocol.retired-upstream.allow=never",
+        "-c", "url.retired-upstream://blocked/.insteadOf=https://github.com/SWG-Source/",
+        "-c", "url.retired-upstream://blocked/.insteadOf=https://github.com/swg-source/",
+        "-c", "url.retired-upstream://blocked/.insteadOf=git@github.com:SWG-Source/",
+        "-c", "url.retired-upstream://blocked/.insteadOf=git@github.com:swg-source/",
+        "-c", "url.retired-upstream://blocked/.insteadOf=ssh://git@github.com/SWG-Source/",
+        "-c", "url.retired-upstream://blocked/.insteadOf=ssh://git@github.com/swg-source/",
     ];
 
     public string Executable { get; } = executable;
