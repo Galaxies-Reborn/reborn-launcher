@@ -424,7 +424,7 @@ public partial class MainWindow : Window
     private const string HostingReferralUri = "https://zap-hosting.com/GalaxiesReborn?voucher=montgojo-a-7826";
 
     private const string VpsGuideUri =
-        "https://github.com/Galaxies-Reborn/reborn-launcher/blob/master/docs/VPS-DEBIAN-13.md";
+        "https://github.com/Galaxies-Reborn/reborn-launcher/blob/main/docs/VPS-DEBIAN-13.md";
 
     private void OpenHostingReferral_Click(object? sender, RoutedEventArgs e) =>
         _processRunner.Start(HostingReferralUri, [], Environment.CurrentDirectory);

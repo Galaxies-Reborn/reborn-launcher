@@ -226,7 +226,7 @@ int Help()
           --remote <url>         Umbrella to read. Default the public Galaxies Reborn umbrella.
 
         Example:
-          reborn prepare --variant x64-dx9-vanilla --address 203.0.113.10
+          reborn prepare --variant x64-dx11-vanilla --address 203.0.113.10
         """);
     return 0;
 }

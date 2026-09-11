@@ -109,7 +109,7 @@ Use your VPS's public IP as the address. Players cannot reach a server that
 advertises `127.0.0.1`.
 
 ```bash
-reborn prepare --variant x64-dx9-vanilla --address 203.0.113.10
+reborn prepare --variant x64-dx11-vanilla --address 203.0.113.10
 ```
 
 This fetches only the chosen variant's sources (~250 MB), generates the
@@ -122,7 +122,7 @@ open, run it under `tmux`:
 ```bash
 sudo apt install -y tmux
 tmux new -s reborn
-reborn prepare --variant x64-dx9-vanilla --address 203.0.113.10
+reborn prepare --variant x64-dx11-vanilla --address 203.0.113.10
 # detach with Ctrl-b then d; return later with: tmux attach -t reborn
 ```
 
@@ -176,10 +176,10 @@ what its container actually exposes.
 ## 7. Run it
 
 ```bash
-reborn status --variant x64-dx9-vanilla
-reborn logs   --variant x64-dx9-vanilla
-reborn stop   --variant x64-dx9-vanilla
-reborn start  --variant x64-dx9-vanilla
+reborn status --variant x64-dx11-vanilla
+reborn logs   --variant x64-dx11-vanilla
+reborn stop   --variant x64-dx11-vanilla
+reborn start  --variant x64-dx11-vanilla
 ```
 
 The containers are set to restart unless stopped, so the server comes back by

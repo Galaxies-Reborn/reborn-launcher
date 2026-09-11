@@ -4,7 +4,7 @@ namespace RebornLauncher.Core.Models;
 
 public sealed class InstanceSettings
 {
-    public string ChannelId { get; set; } = "x64-dx9-vanilla";
+    public string ChannelId { get; set; } = "x64-dx11-vanilla";
 
     public string InstallRoot { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

@@ -16,7 +16,7 @@ downloaded until you choose.
 
 | Project | Eras | Notes |
 | --- | --- | --- |
-| Galaxies Reborn | NGE, CU, Pre-CU | The Galaxies Reborn forks. Only NGE `x64-dx9-vanilla` is published so far. |
+| Galaxies Reborn | NGE, CU, Pre-CU | The Galaxies Reborn repositories. Only NGE `x64-dx11-vanilla` is published so far. |
 | SWGEmu | — | [Core3](https://github.com/swgemu/Core3), an independent Pre-CU emulator with its own container stack. |
 
 The catalog is read from the umbrella at run time, so published variants appear
@@ -67,7 +67,7 @@ including the ports the stack publishes.
 
 ```bash
 reborn list
-reborn prepare --variant x64-dx9-vanilla --address 203.0.113.10
+reborn prepare --variant x64-dx11-vanilla --address 203.0.113.10
 ```
 
 ## Local login
