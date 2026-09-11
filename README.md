@@ -101,3 +101,7 @@ Tagging `v*` builds and publishes both for Linux, Windows, and macOS.
 
 Variant and umbrella layout is documented in the
 [umbrella repository](https://github.com/Galaxies-Reborn/galaxies-reborn).
+
+## Galaxies Reborn community
+
+Join the [Galaxies Reborn Discord](https://discord.gg/CEwKVvKxK5) for project discussion, support, and announcements.
